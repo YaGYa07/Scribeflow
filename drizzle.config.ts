@@ -1,0 +1,21 @@
+import { cwd } from "process";
+import { loadEnvConfig } from "@next/env";
+
+import type { Config } from "drizzle-kit";
+
+import { DB_TABLE_PREFIX } from "@/config/site";
+
+loadEnvConfig(cwd());
+
+if (!process.env.DATABASE_URL) {
+  console.error("'DATABASE_URL' is not set in the environment variables");
+  process.exit(1);
+}
+export default {
+  schema: "./lib/db/schema",
+  out: "./lib/db/migrations",
+  dialect: "postgresql",
+  verbose: true,
+  dbCredentials: { url: process.env.DATABASE_URL },
+  tablesFilter: [`${DB_TABLE_PREFIX}_*`],
+} satisfies Config;
