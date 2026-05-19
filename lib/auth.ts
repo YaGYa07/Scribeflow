@@ -3,30 +3,21 @@ import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { eq } from "drizzle-orm";
 import NextAuth from "next-auth";
 
-import { authConfig } from "@/config/auth";
-import { DEFAULT_LOGIN_REDIRECT } from "@/config/routes";
+import { authConfig } from "@/config/auth.config";
+import { authProviders } from "@/config/auth-providers";
 import { AUTH_SESSION } from "@/lib/auth-session";
 import { db } from "./db";
 import { users } from "./db/schema";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-
-  trustHost: true,
-
+  providers: authProviders,
   adapter: DrizzleAdapter(db),
-
   session: {
     strategy: "jwt",
     maxAge: AUTH_SESSION.MAX_AGE_SECONDS,
     updateAge: AUTH_SESSION.UPDATE_AGE_SECONDS,
   },
-
-  pages: {
-    signIn: "/login",
-    newUser: "/signup",
-  },
-
   events: {
     linkAccount: async ({ user }) => {
       await db
@@ -35,47 +26,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         .where(eq(users.id, user.id!));
     },
   },
-
-  callbacks: {
-    session: async ({ session, token }) => {
-      if (token.sub && session.user) {
-        session.user.id = token.sub;
-        session.user.username = token.username;
-      }
-
-      return session;
-    },
-
-    jwt: async ({ token }) => {
-      const user = await db.query.users.findFirst({
-        where: (u, { eq }) => eq(u.id, token.sub!),
-      });
-
-      if (user) {
-        token.username = user.username;
-      }
-
-      return token;
-    },
-
-    redirect: () => DEFAULT_LOGIN_REDIRECT,
-  },
 });
 
-/**
- * Gets the current user from the server session
- *
- * @returns The current user
- */
 export const getCurrentUser = async () => {
   const session = await auth();
   return session?.user;
 };
 
-/**
- * Checks if the current user is authenticated
- * If not, redirects to the login page
- */
 export const checkAuth = async () => {
   const session = await auth();
   if (!session) redirect("/login");

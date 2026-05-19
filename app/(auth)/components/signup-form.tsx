@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
 import { signIn } from "next-auth/react";
@@ -25,8 +25,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { DEFAULT_LOGIN_REDIRECT } from "@/config/routes";
 import { createNewAccount } from "@/lib/actions";
+import { getSafeRedirectPath } from "@/lib/auth-redirect";
 import { signUpSchema } from "@/lib/validations";
 import { OAuthButtons } from "./oauth-buttons";
 
@@ -39,19 +39,21 @@ const defaultValues: FormData = {
 };
 
 export function SignUpForm() {
-  const router = useRouter();
   const [isPassVisible, setIsPassVisible] = React.useState(false);
   const [isConfirmPassVisible, setIsConfirmPassVisible] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const searchParams = useSearchParams();
+  const callbackUrl = getSafeRedirectPath(searchParams.get("from"));
   const authError = searchParams.get("error");
 
-  if (authError === "OAuthAccountNotLinked") {
-    toast.error("OAuth Account Not Linked", {
-      description: "This account is already linked with another provider.",
-    });
-  }
+  React.useEffect(() => {
+    if (authError === "OAuthAccountNotLinked") {
+      toast.error("OAuth Account Not Linked", {
+        description: "This account is already linked with another provider.",
+      });
+    }
+  }, [authError]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(signUpSchema),
@@ -62,7 +64,10 @@ export function SignUpForm() {
     setIsSubmitting(true);
 
     try {
-      const result = await createNewAccount({ ...formData });
+      const result = await createNewAccount({
+        ...formData,
+        email: formData.email.trim().toLowerCase(),
+      });
 
       if (!result.ok) {
         toast.error(result.error);
@@ -71,20 +76,22 @@ export function SignUpForm() {
 
       const signInResult = await signIn("credentials", {
         type: "email",
-        email: formData.email,
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
         redirect: false,
       });
 
-      if (signInResult?.error) {
-        toast.success("Account created. Please log in with your email.");
-        router.push("/login");
+      if (signInResult?.error || !signInResult?.ok) {
+        toast.success("Account created. Sign in with your email and password.");
+        window.location.assign(
+          signInResult?.code === "oauth_only" ?
+            "/login?error=oauth_only"
+          : "/login"
+        );
         return;
       }
 
-      toast.success("Account created successfully");
-      router.push(DEFAULT_LOGIN_REDIRECT);
-      router.refresh();
+      window.location.assign(callbackUrl);
     } catch (error) {
       const err = error as Error;
       console.error(err.message);
@@ -225,6 +232,7 @@ export function SignUpForm() {
       </form>
 
       <OAuthButtons
+        callbackUrl={callbackUrl}
         isFormDisabled={isSubmitting}
         setIsSubmitting={setIsSubmitting}
       />

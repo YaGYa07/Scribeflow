@@ -59,12 +59,18 @@ export function ResetPasswordForm() {
     setIsSubmitting(true);
 
     try {
-      toast.promise(resetPassword({ ...formData }), {
-        loading: "Resetting Password...",
-        success: "Password Reset Successfully",
-        error: (error) => error.message,
-        finally: () => setIsSubmitting(false),
-      });
+      toast.promise(
+        resetPassword({
+          ...formData,
+          email: formData.email.trim().toLowerCase(),
+        }),
+        {
+          loading: "Resetting Password...",
+          success: "Password Reset Successfully",
+          error: (error) => error.message,
+          finally: () => setIsSubmitting(false),
+        }
+      );
     } catch (error) {
       const err = error as Error;
       console.error(err.message);

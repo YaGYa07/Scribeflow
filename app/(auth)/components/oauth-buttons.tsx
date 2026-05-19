@@ -7,37 +7,35 @@ import { toast } from "sonner";
 
 import { Google } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { DEFAULT_LOGIN_REDIRECT } from "@/config/routes";
 
 type OAuthButtonProps = {
+  callbackUrl?: string;
   isFormDisabled: boolean;
   setIsSubmitting: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export function OAuthButtons(props: OAuthButtonProps) {
-  const { isFormDisabled, setIsSubmitting } = props;
+  const {
+    callbackUrl = DEFAULT_LOGIN_REDIRECT,
+    isFormDisabled,
+    setIsSubmitting,
+  } = props;
 
   const [oauthLoading, setOauthLoading] = React.useState<"google">();
 
-  function signInToaster(promise: Promise<unknown>) {
-    toast.promise(promise, {
-      loading: "Signing in...",
-      success: "You have been signed in.",
-      error: "Something went wrong.",
-      finally: () => {
-        setIsSubmitting(false);
-        setOauthLoading(undefined);
-      },
-    });
-  }
   async function googleSignInHandler() {
     setOauthLoading("google");
     setIsSubmitting(true);
 
     try {
-      signInToaster(signIn("google"));
+      await signIn("google", { callbackUrl });
     } catch (error) {
       const err = error as Error;
       console.error(err.message);
+      toast.error("Google sign-in failed. Please try again.");
+      setIsSubmitting(false);
+      setOauthLoading(undefined);
     }
   }
 

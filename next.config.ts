@@ -7,6 +7,9 @@ const isDocker = process.env.IS_DOCKER === "true";
 const isProd = process.env.NODE_ENV === "production";
 
 const config: NextConfig = {
+  turbopack: {
+    root: import.meta.dirname,
+  },
   reactStrictMode: true,
   images: {
     remotePatterns: [],

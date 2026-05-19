@@ -18,7 +18,8 @@ export type CreateAccountResult =
 export async function createNewAccount(
   credentials: z.infer<typeof signUpSchema>
 ): Promise<CreateAccountResult> {
-  const { email, password } = credentials;
+  const email = credentials.email.trim().toLowerCase();
+  const { password } = credentials;
 
   try {
     const hashedPassword = await hash(password, 10);
@@ -28,10 +29,19 @@ export async function createNewAccount(
     });
 
     if (user) {
-      return {
-        ok: false,
-        error: "Email already exists, please try logging in",
-      };
+      if (user.password) {
+        return {
+          ok: false,
+          error: "Email already exists. Log in with your password or Google.",
+        };
+      }
+
+      await db
+        .update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.email, email));
+
+      return { ok: true };
     }
 
     await db
@@ -52,7 +62,8 @@ export async function createNewAccount(
 export async function resetPassword(
   credentials: z.infer<typeof resetPasswordSchema>
 ) {
-  const { email, password, newPassword } = credentials;
+  const email = credentials.email.trim().toLowerCase();
+  const { password, newPassword } = credentials;
 
   const user = await db.query.users.findFirst({
     where: (u, { eq }) => eq(u.email, email),

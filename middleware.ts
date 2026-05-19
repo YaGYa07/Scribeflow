@@ -1,26 +1,37 @@
 import { NextResponse } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import NextAuth from "next-auth";
 
-import {
-  authRoutes,
-  DEFAULT_LOGIN_REDIRECT,
-  publicRoutes,
-} from "./config/routes";
-import { auth } from "./lib/auth";
+import { authConfig } from "./config/auth.config";
+import { authRoutes, publicRoutes } from "./config/routes";
+import { getSafeRedirectPath } from "./lib/auth-redirect";
 import { env } from "./lib/env";
 
-const ratelimit = new Ratelimit({
-  redis: Redis.fromEnv(),
-  limiter: Ratelimit.slidingWindow(env.RATE_LIMITING_REQUESTS_PER_SECOND, "1s"),
-});
+const { auth } = NextAuth(authConfig);
+
+function getRatelimit() {
+  if (
+    env.ENABLE_RATE_LIMITING !== "true" ||
+    !env.UPSTASH_REDIS_REST_URL ||
+    !env.UPSTASH_REDIS_REST_TOKEN
+  ) {
+    return null;
+  }
+
+  return new Ratelimit({
+    redis: Redis.fromEnv(),
+    limiter: Ratelimit.slidingWindow(
+      env.RATE_LIMITING_REQUESTS_PER_SECOND,
+      "1s"
+    ),
+  });
+}
 
 export default auth(async (req) => {
-  /* -----------------------------------------------------------------------------------------------
-   * Rate limiting middleware
-   * -----------------------------------------------------------------------------------------------*/
+  const ratelimit = getRatelimit();
 
-  if (env.ENABLE_RATE_LIMITING === "true" && env.NODE_ENV === "production") {
+  if (ratelimit && env.NODE_ENV === "production") {
     const id = getIP(req) || "anonymous";
     const { limit, pending, remaining, reset, success } =
       await ratelimit.limit(id);
@@ -47,10 +58,6 @@ export default auth(async (req) => {
     }
   }
 
-  /* -----------------------------------------------------------------------------------------------
-   * Authentication middleware
-   * -----------------------------------------------------------------------------------------------*/
-
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
 
@@ -59,7 +66,8 @@ export default auth(async (req) => {
 
   if (isAuthRoute) {
     if (isLoggedIn) {
-      return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl));
+      const destination = getSafeRedirectPath(nextUrl.searchParams.get("from"));
+      return NextResponse.redirect(new URL(destination, nextUrl));
     }
 
     return NextResponse.next();
@@ -80,7 +88,6 @@ export default auth(async (req) => {
 });
 
 export const config = {
-  // match all routes except static files, _next and api/auth
   matcher: ["/((?!.+\\.[\\w]+$|_next|api/auth).*)"],
 };
 

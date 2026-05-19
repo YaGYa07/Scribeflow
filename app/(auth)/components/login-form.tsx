@@ -26,6 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { getSafeRedirectPath } from "@/lib/auth-redirect";
 import { loginSchema } from "@/lib/validations";
 import { OAuthButtons } from "./oauth-buttons";
 
@@ -37,38 +38,72 @@ const defaultValues: FormData = {
   password: "",
 };
 
+function loginErrorMessage(code?: string | null) {
+  if (code === "oauth_only") {
+    return "This email uses Google sign-in. Use Continue with Google.";
+  }
+
+  return "Invalid email or password.";
+}
+
 export function LoginForm() {
   const [isEmailMode, setIsEmailMode] = React.useState(true);
   const [isPassVisible, setIsPassVisible] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const searchParams = useSearchParams();
+  const callbackUrl = getSafeRedirectPath(searchParams.get("from"));
   const authError = searchParams.get("error");
 
-  if (authError === "OAuthAccountNotLinked") {
-    toast.error("OAuth Account Not Linked", {
-      description: "This account is already linked with another provider.",
-    });
-  }
+  React.useEffect(() => {
+    if (authError === "OAuthAccountNotLinked") {
+      toast.error("OAuth Account Not Linked", {
+        description: "This account is already linked with another provider.",
+      });
+    }
+  }, [authError]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(loginSchema),
     defaultValues,
   });
 
+  function toggleLoginMode() {
+    const nextIsEmail = !isEmailMode;
+    setIsEmailMode(nextIsEmail);
+    form.setValue("type", nextIsEmail ? "email" : "username");
+  }
+
   async function onSubmit(formData: FormData) {
     setIsSubmitting(true);
 
     try {
-      toast.promise(signIn("credentials", { ...formData }), {
-        loading: "Signing in...",
-        success: "You have been signed in.",
-        error: "Something went wrong.",
-        finally: () => setIsSubmitting(false),
+      const payload =
+        formData.type === "email" ?
+          {
+            type: "email" as const,
+            email: formData.email.trim().toLowerCase(),
+            password: formData.password,
+          }
+        : formData;
+
+      const result = await signIn("credentials", {
+        ...payload,
+        redirect: false,
       });
+
+      if (result?.error || !result?.ok) {
+        toast.error(loginErrorMessage(result?.code));
+        return;
+      }
+
+      window.location.assign(callbackUrl);
     } catch (error) {
       const err = error as Error;
       console.error(err.message);
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -101,7 +136,7 @@ export function LoginForm() {
                       }
                       tabIndex={-1}
                       type="button"
-                      onClick={() => setIsEmailMode(!isEmailMode)}
+                      onClick={toggleLoginMode}
                       className="absolute inset-y-0 right-2 my-auto text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
                     >
                       {isEmailMode ?
@@ -194,6 +229,7 @@ export function LoginForm() {
       </p>
 
       <OAuthButtons
+        callbackUrl={callbackUrl}
         isFormDisabled={isSubmitting}
         setIsSubmitting={setIsSubmitting}
       />
