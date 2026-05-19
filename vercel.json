@@ -1,4 +1,5 @@
 {
-  "buildCommand": "SKIP_ENV_VALIDATION=true bun run build",
+  "installCommand": "bun install",
+  "buildCommand": "HUSKY=0 SKIP_ENV_VALIDATION=true bun run build",
   "framework": "nextjs"
 }

@@ -27,7 +27,7 @@
     "ui": "bunx shadcn-ui",
     "clean": "rm -rf .next",
     "cleani": "rm -rf .next && rm -rf node_modules && bun i",
-    "prepare": "husky"
+    "prepare": "node -e \"if (process.env.VERCEL || process.env.CI) process.exit(0)\" && husky"
   },
   "dependencies": {
     "@auth/core": "^0.37.4",
