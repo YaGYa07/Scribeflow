@@ -5,6 +5,7 @@ import NextAuth from "next-auth";
 
 import { authConfig } from "@/config/auth";
 import { DEFAULT_LOGIN_REDIRECT } from "@/config/routes";
+import { AUTH_SESSION } from "@/lib/auth-session";
 import { db } from "./db";
 import { users } from "./db/schema";
 
@@ -15,6 +16,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   session: {
     strategy: "jwt",
+    maxAge: AUTH_SESSION.MAX_AGE_SECONDS,
+    updateAge: AUTH_SESSION.UPDATE_AGE_SECONDS,
   },
 
   pages: {

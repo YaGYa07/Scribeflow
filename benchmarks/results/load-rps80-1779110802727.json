@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-05-18T13:26:42.727Z",
+  "results": [
+    {
+      "label": "ScribeFlow",
+      "url": "http://localhost:3000/",
+      "target_rps": 80,
+      "duration_sec": 45,
+      "errors": 0,
+      "error_rate": "0.0000",
+      "n": 3461,
+      "mean_ms": 5,
+      "stddev_ms": 4,
+      "p50_ms": 5,
+      "p95_ms": 6,
+      "p99_ms": 23,
+      "min_ms": 4,
+      "max_ms": 90
+    },
+    {
+      "label": "Reference (Next.js)",
+      "url": "http://localhost:3001/",
+      "target_rps": 80,
+      "duration_sec": 45,
+      "errors": 0,
+      "error_rate": "0.0000",
+      "n": 3411,
+      "mean_ms": 2,
+      "stddev_ms": 1,
+      "p50_ms": 2,
+      "p95_ms": 3,
+      "p99_ms": 4,
+      "min_ms": 1,
+      "max_ms": 36
+    }
+  ]
+}

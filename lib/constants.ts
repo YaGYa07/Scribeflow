@@ -158,7 +158,7 @@ export const LEGAL = {
       },
       {
         title: "Code of Conduct",
-        description: `When using ${siteConfig.name}, you agree to abide by our Code of Conduct, available in the project repository. The Code of Conduct outlines the expected behavior within the ${siteConfig.name} community and helps create a positive and inclusive environment for all contributors.`,
+        description: `When using ${siteConfig.name}, you agree to abide by our Code of Conduct, available in the project repository. The Code of Conduct outlines expected behavior within the ${siteConfig.name} community and helps create a positive and inclusive environment for all users.`,
       },
       {
         title: "No Warranty",
@@ -169,8 +169,8 @@ export const LEGAL = {
         description: `In no event shall the developers of ${siteConfig.name} be liable for any direct, indirect, incidental, special, or consequential damages arising out of or in any way connected with the use of ${siteConfig.name}.`,
       },
       {
-        title: "Contributions",
-        description: `Contributions to ${siteConfig.name} are welcome, and by submitting a pull request or contributing in any other way, you agree to license your contribution under the terms of the MIT License.`,
+        title: "Source Code Usage",
+        description: `${siteConfig.name} source code is distributed under the MIT License and may be used, modified, and redistributed according to that license.`,
       },
       {
         title: "Termination",

@@ -1,0 +1,19 @@
+-- Optional PostgreSQL RLS (NOT enabled in the ScribeFlow prototype).
+-- Enable only after mapping auth.uid() to application user IDs via Supabase Auth
+-- or a custom JWT claim. This file documents defense-in-depth for the thesis.
+
+-- ALTER TABLE lipi_workspaces ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE lipi_folders ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE lipi_files ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE lipi_collaborators ENABLE ROW LEVEL SECURITY;
+
+-- Example policy: users see workspaces they own or collaborate on
+-- CREATE POLICY workspace_select ON lipi_workspaces
+--   FOR SELECT
+--   USING (
+--     workspace_owner_id = auth.uid()
+--     OR EXISTS (
+--       SELECT 1 FROM lipi_collaborators c
+--       WHERE c.workspace_id = id AND c.user_id = auth.uid()
+--     )
+--   );

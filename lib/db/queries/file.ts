@@ -1,13 +1,17 @@
 "use server";
 
 import { unstable_cache as cache, revalidateTag } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { validate } from "uuid";
 
 import type { File } from "@/types/db";
 
 import { db } from "..";
 import { files } from "../schema";
+
+export type UpdateFileResult =
+  | { ok: true; file: File }
+  | { ok: false; error: "VERSION_CONFLICT" };
 
 /**
  * Create a new file
@@ -24,6 +28,29 @@ export async function createFile(file: File) {
     throw new Error("Failed to create file");
   } finally {
     revalidateTag("get_files");
+  }
+}
+
+/**
+ * Get a single file by ID
+ */
+export async function getFileById(fileId: string) {
+  const isValid = validate(fileId);
+  if (!isValid) {
+    throw new Error("Invalid file ID");
+  }
+
+  try {
+    const [data] = await db
+      .select()
+      .from(files)
+      .where(eq(files.id, fileId))
+      .limit(1);
+
+    return data ?? null;
+  } catch (e) {
+    console.error((e as Error).message);
+    throw new Error("Failed to fetch file from the database");
   }
 }
 
@@ -60,19 +87,36 @@ export const getFiles = cache(
 export const getFilesFromDb = getFiles;
 
 /**
- * Update a file
- * @param file - File object
- * @returns Updated file
+ * Update a file with optimistic concurrency (version column).
  */
-export async function updateFile(file: File) {
+export async function updateFile(file: File): Promise<UpdateFileResult> {
+  if (!file.id) {
+    throw new Error("File ID is required");
+  }
+
+  const expectedVersion = file.version ?? 1;
+
   try {
     const [updatedFile] = await db
       .update(files)
-      .set(file)
-      .where(eq(files.id, file.id!))
+      .set({
+        title: file.title,
+        iconId: file.iconId,
+        data: file.data,
+        bannerUrl: file.bannerUrl,
+        workspaceId: file.workspaceId,
+        folderId: file.folderId,
+        inTrash: file.inTrash,
+        version: expectedVersion + 1,
+      })
+      .where(and(eq(files.id, file.id), eq(files.version, expectedVersion)))
       .returning();
 
-    return updatedFile;
+    if (!updatedFile) {
+      return { ok: false, error: "VERSION_CONFLICT" };
+    }
+
+    return { ok: true, file: updatedFile };
   } catch (e) {
     console.error((e as Error).message);
     throw new Error("Failed to update file");
@@ -81,6 +125,7 @@ export async function updateFile(file: File) {
   }
 }
 
+/** @deprecated Use updateFile; kept for imports that expect the server action name */
 export const updateFileInDb = updateFile;
 
 /**

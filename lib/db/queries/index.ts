@@ -30,12 +30,14 @@ export {
 } from "./folder";
 export {
   createFile,
+  getFileById,
   deleteFile,
   deleteFileFromDb,
   getFiles,
   getFilesFromDb,
   updateFile,
   updateFileInDb,
+  type UpdateFileResult,
 } from "./file";
 export { getUserSubscription } from "./subscription";
 export { subscribeEmailToNewsletter } from "./newsletter";

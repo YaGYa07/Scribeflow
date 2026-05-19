@@ -34,9 +34,9 @@ import {
   createFolder,
   deleteFileFromDb,
   deleteFolderFromDb,
-  updateFileInDb,
   updateFolderInDb,
 } from "@/lib/db/queries";
+import { updateFileResolved } from "@/lib/db/update-file-client";
 import { cn, isAppleDevice } from "@/lib/utils";
 import { EmojiPicker } from "../emoji-picker";
 import { useSubscriptionModal } from "../subscription-modal-provider";
@@ -211,9 +211,12 @@ export function Folders() {
     const updatedFile: File = { ...file, inTrash: true };
     updateFile(updatedFile);
 
-    toast.promise(updateFileInDb(updatedFile), {
+    toast.promise(updateFileResolved(updatedFile), {
       loading: "Moving file to trash...",
-      success: "File moved to trash.",
+      success: (saved) => {
+        updateFile(saved);
+        return "File moved to trash.";
+      },
       error: "Something went wrong! Unable to move file to trash.",
     });
   }
@@ -293,9 +296,12 @@ export function Folders() {
 
       const updatedFile: File = { ...file, title };
       updateFile(updatedFile);
-      await toast.promise(updateFileInDb(updatedFile), {
+      await toast.promise(updateFileResolved(updatedFile), {
         loading: "Renaming file...",
-        success: "File renamed.",
+        success: (saved) => {
+          updateFile(saved);
+          return "File renamed.";
+        },
         error: "Something went wrong! Unable to rename file.",
       });
     }

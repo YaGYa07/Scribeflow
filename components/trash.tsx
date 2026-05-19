@@ -15,9 +15,9 @@ import { useAppState } from "@/hooks/use-app-state";
 import {
   deleteFileFromDb,
   deleteFolderFromDb,
-  updateFileInDb,
   updateFolderInDb,
 } from "@/lib/db/queries";
+import { updateFileResolved } from "@/lib/db/update-file-client";
 import { Button } from "./ui/button";
 import { DialogClose, DialogFooter } from "./ui/dialog";
 import { ScrollArea, ScrollBar } from "./ui/scroll-area";
@@ -49,9 +49,12 @@ export function Trash() {
     const updatedFile: File = { ...file, inTrash: false };
     updateFile(updatedFile);
 
-    toast.promise(updateFileInDb(updatedFile), {
+    toast.promise(updateFileResolved(updatedFile), {
       loading: "Restoring file...",
-      success: "File restored",
+      success: (saved) => {
+        updateFile(saved);
+        return "File restored";
+      },
       error: "Failed to restore file",
     });
   }

@@ -6,7 +6,9 @@ import { FileIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAppState } from "@/hooks/use-app-state";
-import { updateFileInDb } from "@/lib/db/queries";
+import { AUTOSAVE_DEBOUNCE_MS } from "@/lib/editor";
+import { getFileById } from "@/lib/db/queries";
+import { persistFileUpdate } from "@/lib/db/update-file-client";
 
 export default function FilePage() {
   const params = useParams<{ fileId: string }>();
@@ -28,34 +30,48 @@ export default function FilePage() {
 
   const isDirty = draft !== lastSavedValue;
 
-  const saveFileContent = useCallback(async (showToast = true) => {
-    if (!file) return;
-    const updated = { ...file, data: draft };
+  const saveFileContent = useCallback(
+    async (showToast = true) => {
+      if (!file) return;
+      const updated = { ...file, data: draft };
 
-    setIsSaving(true);
-    updateFile(updated);
+      setIsSaving(true);
+      updateFile(updated);
 
-    try {
-      await updateFileInDb(updated);
-      setLastSavedValue(draft);
-      if (showToast) {
-        toast.success("File saved.");
-      }
-    } catch {
-      if (showToast) {
+      const result = await persistFileUpdate(updated);
+
+      if (result.ok) {
+        updateFile(result.file);
+        setLastSavedValue(draft);
+        if (showToast) {
+          toast.success("File saved.");
+        }
+      } else if (result.error === "VERSION_CONFLICT" && file.id) {
+        const latest = await getFileById(file.id);
+        if (latest) {
+          updateFile(latest);
+          const serverContent = latest.data ?? "";
+          setDraft(serverContent);
+          setLastSavedValue(serverContent);
+        }
+        toast.error(
+          "This file was updated elsewhere. Your view was refreshed from the server."
+        );
+      } else if (showToast) {
         toast.error("Failed to save file.");
       }
-    } finally {
+
       setIsSaving(false);
-    }
-  }, [draft, file, updateFile]);
+    },
+    [draft, file, updateFile]
+  );
 
   useEffect(() => {
     if (!file || !isDirty || isSaving) return;
 
     const timeout = setTimeout(() => {
       void saveFileContent(false);
-    }, 900);
+    }, AUTOSAVE_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
   }, [draft, isDirty, isSaving, file, saveFileContent]);
@@ -72,6 +88,7 @@ export default function FilePage() {
         </div>
         <p className="text-sm text-muted-foreground">
           File ID: {params.fileId}
+          {file?.version != null ? ` · Version ${file.version}` : null}
         </p>
       </div>
 

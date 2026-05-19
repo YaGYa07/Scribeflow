@@ -50,6 +50,13 @@
       "when": 1776093845456,
       "tag": "0006_deep_wrecker",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1776100000000,
+      "tag": "0007_file_version",
+      "breakpoints": true
     }
   ]
 }

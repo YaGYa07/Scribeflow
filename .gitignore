@@ -1,4 +1,11 @@
 /node_modules
 /bun.lockb
 .env
+.env.*
+!.env.example
 .next
+.vercel
+.DS_Store
+tsconfig.tsbuildinfo
+benchmarks/reference-stack/node_modules
+docs/_original_paper.txt

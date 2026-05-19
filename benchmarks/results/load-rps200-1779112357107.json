@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-05-18T13:52:37.107Z",
+  "results": [
+    {
+      "label": "ScribeFlow",
+      "url": "http://localhost:3000/",
+      "target_rps": 200,
+      "duration_sec": 45,
+      "errors": 0,
+      "error_rate": "0.0000",
+      "n": 10680,
+      "mean_ms": 4,
+      "stddev_ms": 5,
+      "p50_ms": 3,
+      "p95_ms": 7,
+      "p99_ms": 25,
+      "min_ms": 3,
+      "max_ms": 151
+    }
+  ]
+}

@@ -61,6 +61,7 @@ export const files = createTable("files", {
     onDelete: "cascade",
   }),
   inTrash: boolean("in_trash").notNull().default(false),
+  version: integer("version").notNull().default(1),
   createdAt: timestamp("created_at", {
     withTimezone: true,
     mode: "string",

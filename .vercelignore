@@ -1,0 +1,5 @@
+.env
+.env.*
+docs/_original_paper.txt
+benchmarks/reference-stack/node_modules
+node_modules
