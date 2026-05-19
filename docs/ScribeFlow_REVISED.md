@@ -114,7 +114,7 @@ Six phases: (1) auth/session; (2) workspace/folder/file CRUD; (3) dashboard UX; 
 
 ### E. Deployment
 
-Vercel serverless and Docker; schema via Drizzle migrations; Zod startup validation.
+Production deployment: **https://scribeflow-two.vercel.app** (Vercel, App Router). Database: PostgreSQL on **Supabase (ap-south-1, Mumbai region)** accessed via the **transaction pooler** (`aws-1-ap-south-1.pooler.supabase.com:6543`) from serverless functions—required because the direct `db.*.supabase.co` host is IPv6-only and unreachable from Vercel’s runtime. Schema changes are applied with Drizzle migrations (`bun run db:migrate`). Environment variables are validated at startup with Zod (`lib/env.ts`).
 
 ---
 
@@ -128,14 +128,14 @@ Vercel serverless and Docker; schema via Drizzle migrations; Zod startup validat
 | Memory | 16 GB DDR4 |
 | OS | Ubuntu 22.04 LTS / macOS (load tests) |
 | Runtime | Node.js 22.11, Bun 1.x |
-| Database | PostgreSQL 16 (Supabase, eu-central-1) with PgBouncer |
-| App deploy | Vercel (edge PoP varies by client location) |
+| Database | PostgreSQL 16 (Supabase **ap-south-1**, transaction pooler) |
+| App deploy | Vercel — **https://scribeflow-two.vercel.app** |
 | Load tool | `benchmarks/run-load-test.mjs`, `benchmarks/k6/load.js` |
 
 **Network measurement (corrected):** Prior drafts reported ~12 ms RTT to “Supabase (Frankfurt)” from Gurugram. That figure conflates **edge/CDN RTT** with **database RTT**. India→Frankfurt one-way propagation is on the order of **130 ms minimum** (speed of light). We therefore report:
 
 - **Loopback load tests** (Table IV): `http://127.0.0.1:3000` — measures application stack on the dev host, not WAN DB latency.
-- **Production WAN tests** (recommended): run `benchmarks/scripts/measure-rtt.sh` separately for `BASE_URL` (Vercel) and `DATABASE_HOST` (Supabase pooler).
+- **Production WAN tests** (Table VI): `https://scribeflow-two.vercel.app` @ 80 RPS, 30 s — p50=52 ms, p95=118 ms, p99=290 ms, mean=63 ms, 0% errors (`benchmarks/results/load-rps80-1779211899204.json`).
 
 ### B. Load Testing (HTTP `GET /`)
 
@@ -152,7 +152,13 @@ Constant-arrival-rate for duration *T* at target RPS. Metrics: p50, p95, p99, me
 
 At 500 RPS the development process saturated; cloud deployments with autoscaling should be re-tested for thesis final submission.
 
-**Table V — Reference stack comparison @ 80 RPS (45 s)**
+**Table VI — Production WAN load test (`GET /`, https://scribeflow-two.vercel.app)**
+
+| Target RPS | Duration | p50 (ms) | p95 (ms) | p99 (ms) | Mean (ms) | Std dev (ms) | Error rate |
+|------------|----------|----------|----------|----------|-----------|--------------|------------|
+| 80 | 30 s | 52 | 118 | 290 | 63 | 49 | 0.00% |
+
+**Table V — Reference stack comparison @ 80 RPS (45 s, localhost)**
 
 | Stack | p50 | p95 | p99 | Mean | Std dev | Errors |
 |-------|-----|-----|-----|------|---------|--------|
@@ -193,7 +199,7 @@ ScribeFlow demonstrates a type-safe path from prototype to deployable SaaS-shape
 
 **Limitations**
 
-1. Load tests on localhost do not replace WAN/production characterization; re-run at 100–500 RPS against Vercel + Supabase from the thesis lab machine in Gurugram.
+1. Production WAN characterization at 80 RPS is reported (Table VI); higher RPS and multi-region clients remain future work.
 2. **No CRDT/OT** — not competitive with Google Docs/Notion for live co-editing.
 3. **ACL only** — not Sandhu-style RBAC [8].
 4. **No PostgreSQL RLS** in the deployed prototype.
@@ -216,8 +222,9 @@ ScribeFlow contributes: (i) five-layer architecture with workspace ACL; (ii) six
 | Drizzle schema (workspaces, folders, files, collaborators) | `lib/db/schema/app.ts` |
 | Auth tables | `lib/db/schema/auth.ts` |
 | Workspace authorization | `lib/db/queries/workspace.ts`, `app/dashboard/(workspaces)/[workspaceId]/layout.tsx` |
-| NextAuth providers | `config/auth.ts` |
-| NextAuth session (JWT policy) | `lib/auth.ts`, `lib/auth-session.ts` |
+| NextAuth providers | `config/auth-providers.ts` |
+| NextAuth session (JWT policy) | `lib/auth.ts`, `config/auth.config.ts`, `lib/auth-session.ts` |
+| Vercel DB pooler resolution | `lib/db/database-url.ts` |
 | Auth middleware (login/rate limit) | `middleware.ts` |
 | Autosave + OCC update | `app/dashboard/(workspaces)/[workspaceId]/[fileId]/page.tsx`, `lib/db/queries/file.ts` |
 

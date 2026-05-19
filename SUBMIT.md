@@ -41,18 +41,18 @@ bun run benchmark:production
 
 ## Vercel (optional WAN numbers)
 
-Project: **scribeflow-thesis**  
-Production URL: **https://scribeflow-thesis.vercel.app**
+Project: **scribeflow-two** (Vercel)  
+Production URL: **https://scribeflow-two.vercel.app**
 
-Env vars were pushed from `.env`. If deploy fails:
+Env vars: set `DATABASE_URL`, `SUPABASE_REGION=ap-south-1`, `NEXTAUTH_URL=https://scribeflow-two.vercel.app`, `AUTH_TRUST_HOST=true`, Google OAuth keys. If deploy fails:
 
-1. Vercel dashboard → Project → Settings → Environment Variables — verify `NEXTAUTH_URL` is `https://scribeflow-thesis.vercel.app` (not a multi-line blob).
+1. Vercel dashboard → Project → Settings → Environment Variables — verify `NEXTAUTH_URL` matches the live URL (not a multi-line blob).
 2. Disable **Deployment Protection** (SSO) for preview URLs, or use the production alias.
 3. Redeploy: `vercel deploy --prod --yes`
 4. WAN load test:  
    `node benchmarks/run-load-test.mjs --url https://scribeflow-thesis.vercel.app --rps 80 --duration 45`
 
-`scribeflow.app` does not resolve in DNS yet — use the Vercel URL above.
+**Table VI (WAN @ 80 RPS, 30 s):** p50=52 ms, p95=118 ms, p99=290 ms, mean=63 ms, 0% errors on `https://scribeflow-two.vercel.app`.
 
 ---
 

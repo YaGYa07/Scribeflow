@@ -5,17 +5,16 @@ Output: ScribeFlow_REVISED.docx
 """
 from __future__ import annotations
 
-import re
 import shutil
 from pathlib import Path
 
 from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Pt
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "ScribeFlow_FINAL.docx"
 OUT = ROOT / "ScribeFlow_REVISED.docx"
+
+PROD_URL = "https://scribeflow-two.vercel.app"
 
 
 def replace_in_paragraph(paragraph, old: str, new: str) -> bool:
@@ -87,11 +86,11 @@ def main() -> None:
         ),
         (
             "Each metric was averaged over 50 independent requests under a simulated concurrent load of 10 users, implemented using the k6 load-testing framework.",
-            "Load tests used constant-arrival-rate scripts (benchmarks/k6/load.js and benchmarks/run-load-test.mjs) at 80–500 requests per second (RPS), reporting p50, p95, p99, mean, and standard deviation. Prior 10-user simulations are superseded by these results (Table IV).",
+            "Load tests used constant-arrival-rate scripts (benchmarks/k6/load.js and benchmarks/run-load-test.mjs) at 80–500 requests per second (RPS), reporting p50, p95, p99, mean, and standard deviation (Tables IV and VI).",
         ),
         (
             "Network: 100 Mbps symmetric fiber (measured RTT to Vercel edge: ~12 ms)",
-            "Network: 100 Mbps symmetric fiber. RTT to Vercel edge (when deployed) and to Supabase eu-central-1 must be reported separately; India→Frankfurt database RTT is ~130 ms minimum one-way and must not be conflated with edge RTT.",
+            "Network: 100 Mbps symmetric fiber. RTT to Vercel edge and to Supabase ap-south-1 are reported separately; India→database RTT must not be conflated with edge RTT (~12 ms).",
         ),
         (
             "no data loss was observed during testing",
@@ -107,7 +106,15 @@ def main() -> None:
         ),
         (
             "First, performance measurements were conducted at a simulated concurrency of 10 users; behavior under higher loads (100+ concurrent users) remains uncharacterized. Second, the absence of WebSocket-based real-time collaboration means that concurrent editing conflicts were not evaluated. Third, the test hardware represents mid-range consumer-grade specifications; results on cloud VM instances with different memory and I/O profiles may differ.",
-            "First, production WAN tests require a live deployment URL; loopback results (Table IV) characterize the production build on standardized hardware. Second, there is no CRDT/OT real-time co-editing—only debounced autosave with version-based OCC. Third, ACL is not enterprise RBAC. Fourth, PostgreSQL RLS is not enabled. Fifth, JWT sessions lack server-side revocation. Sixth, Partial Prerendering, streaming SSR, and Edge runtime were not benchmarked.",
+            "Limitations: (1) No CRDT/OT real-time co-editing—only debounced autosave with version-based OCC. (2) ACL is not enterprise RBAC. (3) PostgreSQL RLS is not enabled. (4) JWT sessions lack server-side revocation. (5) Partial Prerendering, streaming SSR, and Edge runtime were not benchmarked.",
+        ),
+        (
+            "PostgreSQL 16 (Supabase, eu-central-1) with PgBouncer",
+            "PostgreSQL 16 (Supabase ap-south-1, transaction pooler aws-1-ap-south-1)",
+        ),
+        (
+            "Vercel (edge PoP varies by client location)",
+            PROD_URL,
         ),
     ]
 
@@ -115,22 +122,38 @@ def main() -> None:
     for old, new in replacements:
         total += replace_all(doc, old, new)
 
-    # Insert Table IV block after Table I section (before Functional Validation)
     table_iv = [
-        "Table IV — HTTP load test (production build, GET /, constant-arrival-rate, 45 s per run).",
+        "Table IV — HTTP load test (production build, GET /, localhost, constant-arrival-rate).",
         "80 RPS: p50=5 ms, p95=8 ms, p99=23 ms, mean=6 ms, σ=5 ms, errors=0%.",
         "100 RPS: p50=4 ms, p95=7 ms, p99=19 ms, mean=5 ms, σ=3 ms, errors=0%.",
         "200 RPS: p50=3 ms, p95=7 ms, p99=25 ms, mean=4 ms, σ=5 ms, errors=0%.",
-        "500 RPS: prior run showed dev-host saturation (24.4% errors at 500 RPS)—re-test on Vercel.",
-        "Reference Next.js @ 80 RPS: p50=2 ms, p95=3 ms, p99=4 ms (benchmarks/reference-stack/).",
-        "WAN: https://scribeflow.app did not resolve at test time; re-run: BASE_URL=<Vercel URL> node benchmarks/run-production-suite.mjs",
+        "500 RPS: dev host saturated (24.4% errors)—not a production capacity claim.",
+        "Reference Next.js @ 80 RPS (localhost): p50=2 ms, p95=3 ms, p99=4 ms.",
         "Evidence: benchmarks/results/production-suite-*.json",
     ]
     insert_after_heading(doc, "C. Functional Validation", table_iv)
 
+    table_vi = [
+        "Table VI — Production WAN load test (GET /, deployed application).",
+        f"Deployment URL: {PROD_URL}",
+        "Region: Vercel serverless + Supabase ap-south-1 (Mumbai) via transaction pooler.",
+        "80 RPS, 30 s: p50=52 ms, p95=118 ms, p99=290 ms, mean=63 ms, σ=49 ms, errors=0%.",
+        "Evidence: benchmarks/results/load-rps80-1779211899204.json",
+        "Functional validation: OAuth signup/login, workspace ACL, autosave with OCC verified on production.",
+    ]
+    insert_after_heading(doc, "Table IV", table_vi)
+
+    deployment = [
+        "Production deployment (May 2026):",
+        f"Live URL: {PROD_URL}",
+        "Database: Supabase PostgreSQL (ap-south-1); serverless connections use aws-1-ap-south-1.pooler.supabase.com:6543.",
+        "Auth: NextAuth.js (Google OAuth + credentials), JWT sessions, edge-safe middleware (config/auth.config.ts).",
+    ]
+    insert_after_heading(doc, "E. Deployment", deployment)
+
     appendix = [
-        "Appendix A — Implementation artifacts (repository paths).",
-        "Schema: lib/db/schema/app.ts · Auth: config/auth.ts, lib/auth.ts · ACL: lib/db/queries/workspace.ts, app/dashboard/(workspaces)/[workspaceId]/layout.tsx · Autosave/OCC: lib/db/queries/file.ts, app/dashboard/.../[fileId]/page.tsx · Middleware (auth only): middleware.ts",
+        "Appendix A — Implementation artifacts (repository: github.com/YaGYa07/Scribeflow).",
+        "Schema: lib/db/schema/app.ts · Auth: config/auth-providers.ts, lib/auth.ts · ACL: lib/db/queries/workspace.ts · DB pooler (Vercel): lib/db/database-url.ts · Autosave/OCC: lib/db/queries/file.ts",
     ]
     insert_after_heading(doc, "References", appendix)
 

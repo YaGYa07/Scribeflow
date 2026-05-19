@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-05-19T17:31:39.204Z",
+  "results": [
+    {
+      "label": "ScribeFlow",
+      "url": "https://scribeflow-two.vercel.app/",
+      "target_rps": 80,
+      "duration_sec": 30,
+      "errors": 0,
+      "error_rate": "0.0000",
+      "n": 2352,
+      "mean_ms": 63,
+      "stddev_ms": 49,
+      "p50_ms": 52,
+      "p95_ms": 118,
+      "p99_ms": 290,
+      "min_ms": 42,
+      "max_ms": 750
+    }
+  ]
+}
