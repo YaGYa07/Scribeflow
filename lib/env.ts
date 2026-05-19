@@ -1,6 +1,8 @@
 import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
+import { normalizeDatabaseUrl } from "@/lib/db/normalize-database-url";
+
 export const env = createEnv({
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
@@ -71,7 +73,8 @@ export const env = createEnv({
 
     DATABASE_URL: z
       .string()
-      .min(1, { message: "Database URL is invalid or missing" }),
+      .min(1, { message: "Database URL is invalid or missing" })
+      .transform(normalizeDatabaseUrl),
 
     /* -----------------------------------------------------------------------------------------------
      * Upstash Rate Limiting (Redis)
