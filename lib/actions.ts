@@ -50,7 +50,17 @@ export async function createNewAccount(
 
     return { ok: true };
   } catch (error) {
-    console.error("createNewAccount:", (error as Error).message);
+    const message = (error as Error).message;
+    console.error("createNewAccount:", message);
+
+    if (process.env.VERCEL && /ENOTFOUND|ECONNREFUSED|timeout/i.test(message)) {
+      return {
+        ok: false,
+        error:
+          "Database unreachable from Vercel. In Supabase → Connect → copy the Transaction pooler URI (port 6543, ap-south-1) into Vercel as DATABASE_URL_POOLED, then redeploy.",
+      };
+    }
+
     return {
       ok: false,
       error:

@@ -30,11 +30,20 @@ export const env = createEnv({
         z.string()
       : z.string().optional(),
     NEXTAUTH_URL: z.preprocess(
-      // This makes Vercel deployments not fail if you don't set NEXTAUTH_URL
-      // Since NextAuth.js automatically uses the VERCEL_URL if present.
-      (str) => process.env.VERCEL_URL ?? str,
-      // VERCEL_URL doesn't include `https` so it cant be validated as a URL
-      process.env.VERCEL ? z.string() : z.string().url()
+      (str) => {
+        const explicit = typeof str === "string" ? str.trim() : "";
+        if (explicit.startsWith("http://") || explicit.startsWith("https://")) {
+          return explicit;
+        }
+
+        const vercelHost = process.env.VERCEL_URL?.trim();
+        if (vercelHost) {
+          return `https://${vercelHost.replace(/^https?:\/\//, "")}`;
+        }
+
+        return explicit;
+      },
+      process.env.VERCEL ? z.string().min(1) : z.string().url()
     ),
 
     /* -----------------------------------------------------------------------------------------------
@@ -72,6 +81,12 @@ export const env = createEnv({
     DATABASE_URL: z
       .string()
       .min(1, { message: "Database URL is invalid or missing" }),
+
+    /** Transaction pooler URI for Vercel. Overrides auto pooler rewrite when set. */
+    DATABASE_URL_POOLED: z.string().url().optional(),
+
+    /** Supabase pooler region (e.g. ap-south-1). Used on Vercel when DATABASE_URL_POOLED is unset. */
+    SUPABASE_REGION: z.string().default("ap-south-1"),
 
     /* -----------------------------------------------------------------------------------------------
      * Upstash Rate Limiting (Redis)

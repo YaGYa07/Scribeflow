@@ -3,19 +3,26 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import { DB_TABLE_PREFIX } from "@/config/site";
-import { env } from "@/lib/env";
+import { getDatabaseUrl, isPoolerUrl } from "@/lib/db/database-url";
 import * as schema from "./schema";
 
-// NOTE: postgres versions above 3.3.5 are not supported on the edge runtime
-const client = postgres(env.DATABASE_URL, { max: 1 });
+function createPostgresClient() {
+  const url = getDatabaseUrl();
+  const usesPooler = isPoolerUrl(url);
+
+  return postgres(url, {
+    max: 1,
+    connect_timeout: 20,
+    idle_timeout: 20,
+    prepare: !usesPooler,
+    ssl: url.includes("supabase.co") ? "require" : undefined,
+  });
+}
+
+const client = createPostgresClient();
 
 export const db = drizzle(client, { schema });
 
-/**
- * Use the same database instance for multiple projects.
- *
- * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
- */
 export const createTable = pgTableCreator(
   (name) => `${DB_TABLE_PREFIX}_${name}`
 );

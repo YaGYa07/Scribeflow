@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 env_file = ROOT / ".env"
-PROD_URL = "https://scribeflow-thesis.vercel.app"
+PROD_URL = "https://scribeflow-two.vercel.app"
 
 
 def parse_env(path: Path) -> dict[str, str]:
@@ -25,8 +25,28 @@ def main() -> None:
 
     env = parse_env(env_file)
     env["NEXTAUTH_URL"] = PROD_URL
+    env["AUTH_TRUST_HOST"] = "true"
+    env["SUPABASE_REGION"] = "ap-south-1"
     env["SKIP_ENV_VALIDATION"] = "true"
     env["HUSKY"] = "0"
+
+    # Build pooler URL for Vercel if direct Supabase URL is in .env
+    direct = env.get("DATABASE_URL", "")
+    if "db." in direct and ".supabase.co" in direct and "DATABASE_URL_POOLED" not in env:
+        try:
+            from urllib.parse import urlparse, urlunparse
+
+            p = urlparse(direct)
+            ref = p.hostname.split(".")[1] if p.hostname else ""
+            if ref:
+                pooler = p._replace(
+                    netloc=f"postgres.{ref}:{p.password}@aws-1-ap-south-1.pooler.supabase.com:6543",
+                    path="/postgres",
+                    query="",
+                )
+                env["DATABASE_URL_POOLED"] = urlunparse(pooler)
+        except Exception:
+            pass
 
     for key, value in env.items():
         print(f"Setting {key} …")

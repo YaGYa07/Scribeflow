@@ -62,7 +62,9 @@ export default auth(async (req) => {
   const isLoggedIn = !!req.auth;
 
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
-  const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
+  const isPublicRoute =
+    publicRoutes.includes(nextUrl.pathname) ||
+    nextUrl.pathname.startsWith("/api/health");
 
   if (isAuthRoute) {
     if (isLoggedIn) {
