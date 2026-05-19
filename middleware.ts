@@ -1,22 +1,19 @@
 import { NextResponse } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import NextAuth from "next-auth";
 
-import { authConfig } from "./config/auth";
 import {
   authRoutes,
   DEFAULT_LOGIN_REDIRECT,
   publicRoutes,
 } from "./config/routes";
+import { auth } from "./lib/auth";
 import { env } from "./lib/env";
 
 const ratelimit = new Ratelimit({
   redis: Redis.fromEnv(),
   limiter: Ratelimit.slidingWindow(env.RATE_LIMITING_REQUESTS_PER_SECOND, "1s"),
 });
-
-const { auth } = NextAuth(authConfig);
 
 export default auth(async (req) => {
   /* -----------------------------------------------------------------------------------------------
