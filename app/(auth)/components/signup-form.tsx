@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -24,6 +25,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { DEFAULT_LOGIN_REDIRECT } from "@/config/routes";
 import { createNewAccount } from "@/lib/actions";
 import { signUpSchema } from "@/lib/validations";
 import { OAuthButtons } from "./oauth-buttons";
@@ -37,6 +39,7 @@ const defaultValues: FormData = {
 };
 
 export function SignUpForm() {
+  const router = useRouter();
   const [isPassVisible, setIsPassVisible] = React.useState(false);
   const [isConfirmPassVisible, setIsConfirmPassVisible] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -59,15 +62,35 @@ export function SignUpForm() {
     setIsSubmitting(true);
 
     try {
-      toast.promise(createNewAccount({ ...formData }), {
-        loading: "Creating Account...",
-        success: "Account Created Successfully",
-        error: (error) => error.message,
-        finally: () => setIsSubmitting(false),
+      const result = await createNewAccount({ ...formData });
+
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+
+      const signInResult = await signIn("credentials", {
+        type: "email",
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
       });
+
+      if (signInResult?.error) {
+        toast.success("Account created. Please log in with your email.");
+        router.push("/login");
+        return;
+      }
+
+      toast.success("Account created successfully");
+      router.push(DEFAULT_LOGIN_REDIRECT);
+      router.refresh();
     } catch (error) {
       const err = error as Error;
       console.error(err.message);
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 

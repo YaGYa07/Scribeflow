@@ -11,26 +11,42 @@ import type { z } from "zod";
 import { db } from "./db";
 import { users } from "./db/schema";
 
+export type CreateAccountResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
 export async function createNewAccount(
   credentials: z.infer<typeof signUpSchema>
-) {
+): Promise<CreateAccountResult> {
   const { email, password } = credentials;
 
-  const hashedPassword = await hash(password, 10);
+  try {
+    const hashedPassword = await hash(password, 10);
 
-  const user = await db.query.users.findFirst({
-    where: (u, { eq }) => eq(u.email, email),
-  });
+    const user = await db.query.users.findFirst({
+      where: (u, { eq }) => eq(u.email, email),
+    });
 
-  if (user) {
-    throw new Error("Email already exists, please try logging in");
+    if (user) {
+      return {
+        ok: false,
+        error: "Email already exists, please try logging in",
+      };
+    }
+
+    await db
+      .insert(users)
+      .values({ username: randomUUID(), email, password: hashedPassword });
+
+    return { ok: true };
+  } catch (error) {
+    console.error("createNewAccount:", (error as Error).message);
+    return {
+      ok: false,
+      error:
+        "Could not create account. Check database connection and migrations.",
+    };
   }
-
-  await db
-    .insert(users)
-    .values({ username: randomUUID(), email, password: hashedPassword });
-
-  redirect("/");
 }
 
 export async function resetPassword(
