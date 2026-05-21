@@ -1,17 +1,19 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { FolderIcon, LayoutGrid, Pencil, Plus, Trash2, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 
-import { useAppState } from "@/hooks/use-app-state";
 import {
-  getWorkspaceCollaborators,
-  inviteWorkspaceCollaborator,
-  moveWorkspaceToTrash,
-  removeWorkspaceCollaborator,
-  updateWorkspaceTitle,
-} from "@/lib/db/queries";
+  getWorkspaceCollaboratorsAction,
+  inviteWorkspaceCollaboratorAction,
+  moveWorkspaceToTrashAction,
+  removeWorkspaceCollaboratorAction,
+  updateWorkspaceTitleAction,
+} from "@/lib/actions/workspace";
+import { useAppState } from "@/hooks/use-app-state";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import {
@@ -64,8 +66,12 @@ export function Workspaces() {
 
     setIsLoadingCollaborators(true);
     try {
-      const data = await getWorkspaceCollaborators(workspaceId);
-      setCollaborators(data as WorkspaceCollaborator[]);
+      const result = await getWorkspaceCollaboratorsAction(workspaceId);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setCollaborators(result.data as WorkspaceCollaborator[]);
     } catch {
       toast.error("Failed to load collaborators.");
     } finally {
@@ -85,24 +91,27 @@ export function Workspaces() {
       return;
     }
 
-    await toast.promise(updateWorkspaceTitle(workspaceId, nextTitle), {
-      loading: "Renaming workspace...",
-      success: "Workspace renamed.",
-      error: "Failed to rename workspace.",
-    });
+    const result = await updateWorkspaceTitleAction(workspaceId, nextTitle);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Workspace renamed.");
     setIsRenameDialogOpen(false);
+    router.refresh();
   }
 
   async function deleteWorkspace() {
     if (!workspaceId || workspaceId === "new-workspace") return;
-    try {
-      await moveWorkspaceToTrash(workspaceId);
-      toast.success("Workspace moved to trash.");
-      router.push("/dashboard");
-      router.refresh();
-    } catch {
-      toast.error("Failed to move workspace to trash.");
+
+    const result = await moveWorkspaceToTrashAction(workspaceId);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
     }
+    toast.success("Workspace moved to trash.");
+    router.push("/dashboard");
+    router.refresh();
   }
 
   async function inviteCollaborator() {
@@ -111,12 +120,18 @@ export function Workspaces() {
 
     setIsInviting(true);
     try {
-      await inviteWorkspaceCollaborator(workspaceId, inviteEmail);
+      const result = await inviteWorkspaceCollaboratorAction(
+        workspaceId,
+        inviteEmail
+      );
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
       toast.success("Collaborator invited.");
       setInviteEmail("");
       await refreshCollaborators();
-    } catch (error) {
-      toast.error((error as Error).message || "Failed to invite collaborator.");
+      router.refresh();
     } finally {
       setIsInviting(false);
     }
@@ -125,13 +140,14 @@ export function Workspaces() {
   async function removeCollaborator(userId: string) {
     if (!workspaceId || workspaceId === "new-workspace") return;
 
-    try {
-      await removeWorkspaceCollaborator(workspaceId, userId);
-      toast.success("Collaborator removed.");
-      await refreshCollaborators();
-    } catch {
-      toast.error("Failed to remove collaborator.");
+    const result = await removeWorkspaceCollaboratorAction(workspaceId, userId);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
     }
+    toast.success("Collaborator removed.");
+    await refreshCollaborators();
+    router.refresh();
   }
 
   return (
@@ -248,6 +264,9 @@ export function Workspaces() {
             Invite
           </Button>
         </div>
+        <p className="mb-2 text-xs text-muted-foreground">
+          The person must already have a ScribeFlow account with this email.
+        </p>
 
         <ul className="space-y-2 text-sm">
           {isLoadingCollaborators ?

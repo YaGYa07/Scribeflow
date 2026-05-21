@@ -97,7 +97,9 @@ export async function inviteWorkspaceCollaborator(
   });
 
   if (!user) {
-    throw new Error("User with this email does not exist.");
+    throw new Error(
+      "No account found for this email. They must sign up on ScribeFlow first, then you can invite them."
+    );
   }
 
   const existingCollaborator = await db.query.collaborators.findFirst({
